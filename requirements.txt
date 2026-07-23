@@ -1,0 +1,5 @@
+streamlit
+fastapi
+uvicorn
+google-generativeai
+python-dotenv
