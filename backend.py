@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from dotenv import load_dotenv
-import os
 from google import genai
 from enum import Enum
+import os
+import time
 
 MODEL_NAME = "gemini-3.6-flash"
 
@@ -75,11 +76,13 @@ def HomePage():
 @app.post("/summarize")
 async def summarize(request: SummaryRequest):
 
+    start = time.perf_counter() #End-to-End API Latency
     response = client.models.generate_content(
         model=MODEL_NAME,
         contents=build_prompt(request)
     )
-
+    end = time.perf_counter()
     return {
-        "summary": response.text
+        "summary":response.text,
+        "response_time_seconds":round(end-start,2)
     }
