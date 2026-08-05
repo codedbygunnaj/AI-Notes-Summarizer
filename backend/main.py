@@ -6,6 +6,14 @@ from enum import Enum
 import logging
 import os
 import time
+from backend.database import Base, engine
+from backend import models #importing it registers the User(Base) class with SQLAlchemy
+
+# ======================================================
+# Creating database
+# ======================================================
+
+Base.metadata.createall(bind=engine) #creates database and tables if old not exists.
 
 # ======================================================
 # Configuration

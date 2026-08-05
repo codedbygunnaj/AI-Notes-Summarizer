@@ -2,6 +2,9 @@ import streamlit as st
 import requests
 import threading
 import time
+import os
+from dotenv import load_dotenv
+from pypdf import PdfReader
 
 # ======================================================
 # Configuration
@@ -10,10 +13,11 @@ import time
 APP_NAME = "Dhvani"
 APP_ICON = "🧠"
 
-# FastAPI backend URL
-# Default: uvicorn backend:app --reload  
-BACKEND_URL = "http://127.0.0.1:8000/summarize"
+load_dotenv()
+BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000/summarize")
 REQUEST_TIMEOUT = 60  # seconds
+
+CHAR_LIMIT = 24000 #backend limit 25K, so cutting it to 24K
 
 st.set_page_config(
     page_title=APP_NAME,
@@ -32,6 +36,7 @@ if "last_result" not in st.session_state:
         "model": "—",
         "version": "v1.0.0",
         "response_time": "—",
+        "warning": None,
         "error": None,
     }
 
@@ -146,7 +151,7 @@ st.markdown(
         letter-spacing: 0.04em;
         text-transform: uppercase;
         color: #6b6e85;
-        margin: 1.1rem 0 0.6rem 0;
+        margin: 1.2rem 0 0.6rem 0;
     }
 
     /* ---------- Glass cards ---------- */
@@ -188,6 +193,24 @@ st.markdown(
     /* horizontal radio -> segmented-control look */
     div[role="radiogroup"] {
         gap: 0.4rem;
+    }
+
+    /* ---------- File uploader (PDF) — match the dark glass theme ---------- */
+
+    [data-testid="stFileUploaderDropzone"] {
+        background: rgba(255, 255, 255, 0.03) !important;
+        border: 1px dashed rgba(167, 139, 250, 0.35) !important;
+        border-radius: 14px !important;
+    }
+    [data-testid="stFileUploaderDropzone"] button {
+        background: rgba(167, 139, 250, 0.14) !important;
+        color: #c4b5fd !important;
+        border: 1px solid rgba(167, 139, 250, 0.35) !important;
+        border-radius: 8px !important;
+    }
+    [data-testid="stFileUploaderDropzoneInstructions"] span,
+    [data-testid="stFileUploaderDropzoneInstructions"] small {
+        color: #8b8ea3 !important;
     }
 
     /* ---------- Button ---------- */
@@ -284,6 +307,16 @@ st.markdown(
         font-size: 0.9rem;
     }
 
+    .warn-box {
+        color: #fcd34d;
+        background: rgba(251, 191, 36, 0.08);
+        border: 1px solid rgba(251, 191, 36, 0.3);
+        border-radius: 12px;
+        padding: 0.85rem 1.1rem;
+        font-size: 0.87rem;
+        margin-bottom: 0.9rem;
+    }
+
     /* markdown output styling inside summary card */
     div[data-testid="stVerticalBlockBorderWrapper"] .stMarkdown ul {
         padding-left: 1.3rem;
@@ -311,10 +344,10 @@ st.markdown(
 
 def call_backend(payload: dict, result_box: dict):
     """
-        Runs in a background thread so the main thread is free
-        to animate the loader while we wait on the network call.
-        Writes into result_box (mutable dict) instead of returning,
-        since threads can't return values directly.
+    Runs in a background thread so the main thread is free
+    to animate the loader while we wait on the network call.
+    Writes into result_box (mutable dict) instead of returning,
+    since threads can't return values directly.
     """
     try:
         response = requests.post(BACKEND_URL, json=payload, timeout=REQUEST_TIMEOUT)
@@ -329,7 +362,7 @@ def call_backend(payload: dict, result_box: dict):
     except requests.exceptions.ConnectionError:
         result_box["success"] = False
         result_box["error"] = (
-            f"Error: 500 (Couldn't reach the backend)"
+            f"Couldn't reach the backend at `{BACKEND_URL}`. "
             "Is your FastAPI server running (uvicorn backend:app --reload)?"
         )
     except requests.exceptions.Timeout:
@@ -355,6 +388,24 @@ def clean_summary_text(text: str) -> str:
     text = text.replace("\\n", "\n")   # literal backslash-n -> real newline
     text = text.strip()
     return text
+
+
+def extract_pdf_text(uploaded_pdf) -> str:
+    """
+    Extracts text from an uploaded PDF using pypdf.
+    Skips pages that fail to extract (e.g. scanned/image-only pages)
+    instead of crashing the whole app.
+    """
+    reader = PdfReader(uploaded_pdf)
+    chunks = []
+    for page in reader.pages:
+        try:
+            page_text = page.extract_text() or ""
+        except Exception:
+            page_text = ""
+        if page_text.strip():
+            chunks.append(page_text.strip())
+    return "\n\n".join(chunks).strip()
 
 
 def run_generative_loader(placeholder, thread: threading.Thread):
@@ -424,8 +475,16 @@ st.write("")
 st.divider()
 
 # ======================================================
-# Main Layout — Notes (+ Settings) | Custom Instructions (+ Stats)
+# Main Layout — Notes + Settings + PDF | Custom Instructions + Stats
 # ======================================================
+#
+# c) Consistency fix: previously Summary Length / Audience / PDF upload /
+#    Generate button were crammed into 4 columns in one row — each is a
+#    different widget type with a different natural height, so they never
+#    lined up. Now: Settings row has only the 2 short, same-shape widgets
+#    (radio + dropdown), PDF upload gets its own full-width row below
+#    (it needs the room), and the button lives in the right column next
+#    to Custom Instructions, where it always did the least visual damage.
 
 left, right = st.columns([3.7, 1.3], gap="large")
 
@@ -435,7 +494,7 @@ with left:
 
     notes = st.text_area(
         "",
-        height=380,
+        height=340,
         placeholder="""Paste your notes here...
 
 Examples
@@ -451,7 +510,7 @@ Examples
 
     st.markdown('<div class="section-label-sm">Settings</div>', unsafe_allow_html=True)
 
-    set_col1, set_col2, set_col3 = st.columns(3)
+    set_col1, set_col2 = st.columns(2)
 
     with set_col1:
         summary_type = st.radio(
@@ -466,13 +525,30 @@ Examples
             ["Student", "Interview", "Research"]
         )
 
-    with set_col3:
-        generate = st.button(
-            "Generate Summary",
-            use_container_width=True,
-            type="primary"
-        )
-    
+    st.markdown('<div class="section-label-sm">Reference PDF (optional)</div>', unsafe_allow_html=True)
+
+    reference_pdf = st.file_uploader(
+        "Upload a PDF",
+        type=["pdf"],
+        max_upload_size=1,
+        label_visibility="collapsed"
+    )
+
+    pdf_text = ""
+
+    if reference_pdf is not None:
+        pdf_text = extract_pdf_text(reference_pdf)
+
+        if pdf_text:
+            st.caption(f"📄 Extracted **{len(pdf_text):,}** characters from **{reference_pdf.name}**")
+        else:
+            st.caption("⚠️ Couldn't extract any text from this PDF — it may be scanned/image-only.")
+
+        # d) Preview lives inside a collapsed expander so it doesn't add
+        #    height to the page unless the user actually opens it.
+        with st.expander("Preview PDF"):
+            st.pdf(reference_pdf, height=320)
+
 with right:
 
     st.markdown('<div class="section-label">Custom Instructions</div>', unsafe_allow_html=True)
@@ -482,7 +558,8 @@ with right:
         height=160,
         placeholder="""Examples
 
-• Use Analogies
+• Explain like I'm 10
+• Use Hinglish
 • Keep examples
 • Focus on interview questions
 • Don't use bullet points""",
@@ -491,6 +568,12 @@ with right:
 
     st.write("")
 
+    generate = st.button(
+        "Generate Summary",
+        use_container_width=True,
+        type="primary"
+    )
+
     st.markdown('<div class="section-label-sm">Status</div>', unsafe_allow_html=True)
 
     stats_placeholder = st.empty()
@@ -498,23 +581,44 @@ with right:
         render_stats(st.session_state.last_result)
 
 # ======================================================
-# Generate flow — validate, animate loader, call backend
+# Generate flow — merge sources, guard char limit, call backend
 # ======================================================
 
 if generate:
 
-    if not notes.strip():
+    # a) Merge notes + PDF text properly (this replaces the old buggy
+    #    branching that silently dropped the PDF text half the time).
+    combined_parts = []
+    if notes.strip():
+        combined_parts.append(notes.strip())
+    if pdf_text.strip():
+        combined_parts.append(pdf_text.strip())
+
+    combined_text = "\n\n".join(combined_parts).strip()
+
+    if not combined_text:
         st.session_state.last_result = {
             "summary": None,
             "model": st.session_state.last_result.get("model", "—"),
             "version": "v1.0.0",
             "response_time": st.session_state.last_result.get("response_time", "—"),
-            "error": "Please paste some notes before generating a summary.",
+            "warning": None,
+            "error": "Please paste some notes or upload a PDF before generating a summary.",
         }
 
     else:
+        # b) Char-limit guard — trim + warn instead of firing a request
+        #    that the backend's max_length=25000 would reject anyway.
+        warning = None
+        if len(combined_text) > CHAR_LIMIT:
+            combined_text = combined_text[:CHAR_LIMIT]
+            warning = (
+                f"⚠️ Limit exceeded — your notes/PDF were trimmed to the first "
+                f"{CHAR_LIMIT:,} characters to stay within the backend's limit."
+            )
+
         payload = {
-            "text": notes,
+            "text": combined_text,
             "summary_type": summary_type.lower(),
             "audience": audience.lower(),
             "additional_instructions": additional_instructions.strip(),
@@ -534,6 +638,7 @@ if generate:
                 "model": result_box.get("model", "—"),
                 "version": "v1.0.0",
                 "response_time": result_box.get("response_time", "—"),
+                "warning": warning,
                 "error": None,
             }
         else:
@@ -542,6 +647,7 @@ if generate:
                 "model": st.session_state.last_result.get("model", "—"),
                 "version": "v1.0.0",
                 "response_time": st.session_state.last_result.get("response_time", "—"),
+                "warning": warning,
                 "error": result_box.get("error", "Something went wrong."),
             }
 
@@ -564,9 +670,12 @@ with summary_container:
 
     result = st.session_state.last_result
 
+    if result.get("warning"):
+        st.markdown(f'<div class="warn-box">{result["warning"]}</div>', unsafe_allow_html=True)
+
     if result.get("error"):
         st.markdown(
-            f'<div class="error-box">{result["error"]}</div>',
+            f'<div class="error-box">⚠️ {result["error"]}</div>',
             unsafe_allow_html=True
         )
 
@@ -578,7 +687,7 @@ with summary_container:
             """
             <div class="summary-empty">
             No summary generated yet.<br>
-            Paste your notes and click <b>Generate Summary</b>.
+            Paste your notes, upload a PDF, or both — then click <b>Generate Summary</b>.
             </div>
             """,
             unsafe_allow_html=True
