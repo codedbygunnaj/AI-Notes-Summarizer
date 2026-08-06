@@ -14,7 +14,7 @@ APP_NAME = "Dhvani"
 APP_ICON = "🧠"
 
 load_dotenv()
-BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000/summarize")
+BACKEND_URL_SUMMARIZER = os.getenv("BACKEND_URL_SUMMARIZER", "http://127.0.0.1:8000/summarize")
 REQUEST_TIMEOUT = 60  # seconds
 
 CHAR_LIMIT = 24000 #backend limit 25K, so cutting it to 24K
@@ -350,7 +350,7 @@ def call_backend(payload: dict, result_box: dict):
     since threads can't return values directly.
     """
     try:
-        response = requests.post(BACKEND_URL, json=payload, timeout=REQUEST_TIMEOUT)
+        response = requests.post(BACKEND_URL_SUMMARIZER, json=payload, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         data = response.json()
 
@@ -362,7 +362,7 @@ def call_backend(payload: dict, result_box: dict):
     except requests.exceptions.ConnectionError:
         result_box["success"] = False
         result_box["error"] = (
-            f"Couldn't reach the backend at `{BACKEND_URL}`. "
+            f"Couldn't reach the backend at `{BACKEND_URL_SUMMARIZER}`. "
             "Is your FastAPI server running (uvicorn backend:app --reload)?"
         )
     except requests.exceptions.Timeout:

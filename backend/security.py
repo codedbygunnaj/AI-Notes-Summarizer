@@ -4,6 +4,11 @@ from dotenv import load_dotenv
 from jose import jwt
 from passlib.context import CryptContext
 #cryptcontext instead of bcrypt (for pswd hashing) so that if bcrypt becomes old and argon2 or anyother comes, cryptcontext acts as a manager and handles all that on it's own!
+from jose import JWTError
+from backend.database import SessionLocal
+from backend.models import User
+from fastapi import HTTPException
+import secrets
 
 load_dotenv()
 SECRET_KEY_JWT = os.getenv("SECRET_KEY_JWT")
@@ -42,5 +47,43 @@ def create_access_token(data: dict):
 
     return encoded_jwt
 
-def verify_access_token():
-    return
+def verify_access_token(token: str):
+
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY_JWT,
+            algorithms=[ALGORITHM]
+        )
+
+        currUserEmail = payload.get("email")
+        if currUserEmail is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid Token"
+            )
+
+        db = SessionLocal()
+        try:
+            user_exists = db.query(User).filter(
+                User.email == currUserEmail
+            ).first()
+            if not user_exists:
+                raise HTTPException(
+                    status_code=401,
+                    detail="User does not exist."
+                )
+
+            return user_exists      #Return complete user object
+
+        finally:
+            db.close()
+
+    except JWTError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or Expired Token."
+        )
+    
+def generate_verification_token():
+    return secrets.token_urlsafe(32)
