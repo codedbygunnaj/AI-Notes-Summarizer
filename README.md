@@ -1,77 +1,140 @@
-# 🧠 AI Notes Summarizer
+# 🧠 Dhvani — AI Knowledge Assistant
 
-An AI-powered Notes Summarizer built using **FastAPI** and **Google Gemini API**.
+Dhvani is an AI-powered knowledge assistant built using **FastAPI**, **Streamlit**, and **Google Gemini**.
 
-The project focuses on learning the fundamentals of building GenAI applications from scratch before introducing frameworks like LangChain, RAG, and Agents.
+The project focuses on understanding the complete architecture of modern GenAI applications by building every component from scratch instead of relying on high-level frameworks. It is being developed incrementally—from a simple LLM-powered summarizer to a complete Retrieval-Augmented Generation (RAG) platform.
 
 ---
 
-## 🚀 Features
+# 🚀 Features
 
-- Summarize long notes using Google's Gemini models
+## AI Summarization
+
+- Summarize lengthy notes using Google Gemini
 - Multiple summary lengths
   - Short
   - Medium
   - Detailed
-- Audience-specific summaries
+- Audience-aware summaries
   - Student
   - Interview Preparation
   - Research
-- Prompt Engineering based architecture
-- REST API using FastAPI
-- Interactive Swagger documentation
+- Custom user instructions
+- Prompt-engineering based architecture
 
 ---
 
-## 🛠 Tech Stack
+## Authentication & Security
 
-- Python
+- User Signup
+- User Login
+- JWT Authentication
+- Password Hashing (bcrypt)
+- Protected API Endpoints
+- Email Verification
+- Daily Usage Tracking
+
+---
+
+## File Support
+
+- Upload PDF Notes
+- Extract PDF Content
+- Summarize Uploaded Documents
+
+---
+
+## Developer Features
+
+- FastAPI REST APIs
+- Interactive Swagger Documentation
+- Structured Logging
+- Modular Backend Architecture
+- Pydantic Validation
+- Environment-based Configuration
+
+---
+
+# 🛠 Tech Stack
+
+### Backend
+
 - FastAPI
-- Google Gemini API
+- SQLAlchemy
+- SQLite
 - Pydantic
+
+### Frontend
+
+- Streamlit
+
+### AI
+
+- Google Gemini API
+- Prompt Engineering
+
+### Authentication
+
+- JWT
+- Passlib (bcrypt)
+
+### Email
+
+- SMTP (Gmail App Password)
+
+### Utilities
+
+- PyPDF
 - python-dotenv
 - Uvicorn
 
 ---
 
-## 📂 Project Structure
+# 📂 Project Structure
 
-```
-AI-Notes-Summarizer/
+```text
+Dhvani/
+
 │
-├── backend.py          # FastAPI Backend
-├── .env                # Gemini API Key
+
+├── backend/
+│   ├── auth.py
+│   ├── database.py
+│   ├── dependencies.py
+│   ├── email_service.py
+│   ├── models.py
+│   ├── schemas.py
+│   ├── security.py
+│   └── main.py
+│
+├── frontend/
+│   └── frontend.py
+│
+├── uploads/
+│
 ├── requirements.txt
+├── .env
 ├── README.md
 └── .gitignore
 ```
 
-> The project structure will evolve as new features are added.
+The project structure will continue evolving as new AI capabilities are introduced.
 
-Future folders:
+---
 
-```
-prompts/
-services/
-models/
-config/
-frontend/
+# ⚙️ Setup
+
+## Clone Repository
+
+```bash
+git clone https://github.com/codedbygunnaj/AI-Notes-Summarizer.git
+
+cd AI-Notes-Summarizer
 ```
 
 ---
 
-## ⚙️ Setup
-
-### Clone Repository
-
-```bash
-git clone https://github.com/codedbygunnaj/AI-Notes-Summarizer.git
-cd AI-Notes-Summarizer
-```
-
-### Create Virtual Environment
-
-Windows
+## Create Virtual Environment
 
 ```bash
 python -m venv .venv
@@ -79,11 +142,15 @@ python -m venv .venv
 
 Activate
 
+Windows
+
 ```bash
 .venv\Scripts\activate
 ```
 
-### Install Dependencies
+---
+
+## Install Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -91,31 +158,30 @@ pip install -r requirements.txt
 
 ---
 
-## 🔑 Environment Variables
+# 🔑 Environment Variables
 
 Create a `.env` file.
 
 ```env
-GEMINI_API_KEY=YOUR_API_KEY
-```
+GEMINI_API_KEY=
 
-Generate an API key from Google AI Studio.
+SECRET_KEY_JWT=
+
+SMTP_EMAIL=
+SMTP_PASSWORD=
+
+BACKEND_URL=
+```
 
 ---
 
-## ▶️ Run the Backend
+# ▶️ Run the Backend
 
 ```bash
-uvicorn backend:app --reload
+uvicorn backend.main:app --reload
 ```
 
-Server starts at
-
-```
-http://127.0.0.1:8000
-```
-
-Swagger Documentation
+Swagger
 
 ```
 http://127.0.0.1:8000/docs
@@ -123,91 +189,86 @@ http://127.0.0.1:8000/docs
 
 ---
 
-## 📬 API Endpoint
+# ▶️ Run the Frontend
 
-### POST `/summarize`
-
-Example Request
-
-```json
-{
-  "text": "Your notes go here...",
-  "summary_type": "medium",
-  "audience": "student"
-}
-```
-
-Example Response
-
-```json
-{
-  "summary": "Generated summary..."
-}
+```bash
+streamlit run frontend/frontend.py
 ```
 
 ---
 
-## 🧠 Learning Goals
+# 📬 API
 
-This project is intentionally built without frameworks such as LangChain in the beginning.
+## Authentication
 
-The objective is to understand every layer involved in a GenAI application, including:
+```
+POST /auth/signup
+
+POST /auth/login
+
+GET /auth/verify
+```
+
+---
+
+## AI
+
+```
+POST /summarize
+```
+
+Protected using JWT Authentication.
+
+---
+
+# 📌 Current Status
+
+## ✅ Version 2.9
+
+- LLM-powered summarization
+- PDF summarization
+- Prompt Engineering
+- JWT Authentication
+- Email Verification
+- Protected APIs
+- Daily Usage Tracking
+- Streamlit Frontend
+- Modular FastAPI Backend
+
+---
+
+# 🗺 Roadmap
+
+### Completed
 
 - LLM APIs
 - Prompt Engineering
-- FastAPI
-- Request Validation
-- Software Architecture
-- Modular Prompt Design
-
-Later versions will introduce:
-
+- FastAPI Backend
 - Streamlit Frontend
-- Response Timing
-- Token Usage
-- Better Error Handling
-- Markdown/PDF Export
+- Authentication
+- Email Verification
+
+### In Progress
+
+- Response Analytics
+- Better Usage Management
+
+### Upcoming
+
 - Embedding Models
 - Vector Databases
-- RAG
+- Manual RAG
+- Multi-document Chat
+- Conversation Memory
 - LangChain
-- Tool Calling
-- Agents
+- AI Agents
 - LangGraph
 
 ---
 
-## 📌 Current Status
+# 🎯 Learning Philosophy
 
-### ✅ Version 1
-
-- FastAPI backend
-- Gemini API integration
-- Prompt engineering
-- Audience-aware summaries
-- Multiple summary types
-- Swagger testing
-
----
-
-## 🔮 Upcoming Features
-
-- Streamlit Frontend
-- Better UI/UX
-- Copy & Download Summary
-- Response Time Tracking
-- Token Usage Analytics
-- Modular Project Architecture
-- RAG-based PDF Chat
-- Multi-LLM Support
-
----
-
-## 📖 Purpose
-
-This repository documents my journey of learning Generative AI through hands-on projects while understanding the reasoning and architecture behind every component instead of relying solely on high-level frameworks.
-
-Every feature is built with the philosophy:
+Every feature is built by first understanding the underlying concept instead of directly using frameworks.
 
 ```
 Concept
@@ -221,6 +282,13 @@ Implementation
 Optimization
 ```
 
-The goal is not just to build working AI applications, but to understand how they work internally.
+The objective is not only to build AI applications but to understand the reasoning behind every layer involved in modern AI systems.
 
 ---
+
+# 👨‍💻 Author
+
+**Gunaj Chugh**
+
+- GitHub: https://github.com/codedbygunnaj
+- LinkedIn: https://www.linkedin.com/in/gunajchugh/
