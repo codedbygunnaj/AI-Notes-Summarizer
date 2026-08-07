@@ -10,6 +10,7 @@ from backend.database import Base, engine, SessionLocal
 from backend import models #importing it registers the User(Base) class with SQLAlchemy
 from backend.auth import router as auth_router
 from backend.dependencies import get_current_user
+from datetime import datetime, UTC, timedelta
 
 # ======================================================
 # Creating database
@@ -195,21 +196,26 @@ def HomePage():
 async def summarize(request: SummaryRequest, 
     current_user: models.User = Depends(get_current_user)):
 
-    logger.info(
-        f"Summary requested by {current_user.email}"
-    )
+    logger.info(f"Summary requested by {current_user.email}")
 
-    if(current_user.daily_usage >= 3):
+    now_naive = datetime.now(UTC).replace(tzinfo=None)
+
+    is_reset_due = False
+    if current_user.last_usage and (current_user.last_usage + timedelta(hours=24) <= now_naive):
+        is_reset_due = True
+        current_user.daily_usage = 0  # Temporarily set to 0 so the next check passes
+
+    if current_user.daily_usage >= 3:
         raise HTTPException(
-            status_code=429, #401 for Not Authenticated, 429: Too many requests
+            status_code=429,
             detail="Daily Application Usage Limit Exceeded"
         )
-    start = time.perf_counter()  # End-to-End API Latency
+        
+    start = time.perf_counter()
 
     logger.info("Generating summary...")
 
     try:
-
         response = client.models.generate_content(
             model=MODEL_NAME,
             contents=build_prompt(request)
@@ -218,24 +224,26 @@ async def summarize(request: SummaryRequest,
 
         try:
             db = SessionLocal()
-            current_user = db.query(models.User).filter(
+            # Fetch fresh user data
+            db_user = db.query(models.User).filter(
                 models.User.id == current_user.id
             ).first()
 
-            current_user.daily_usage+=1
+            if is_reset_due:
+                db_user.daily_usage = 0
+            
+            db_user.daily_usage += 1
+            db_user.last_usage = now_naive 
+            
             db.commit()
-            db.refresh(current_user)
+            db.refresh(db_user)
         finally:
             db.close()
 
-        logger.info(
-            f"Summary generated successfully in {round(end-start,2)} seconds."
-        )
+        logger.info(f"Summary generated successfully in {round(end-start,2)} seconds.")
 
     except Exception as e:
-
         logger.exception(e)
-
         raise HTTPException(
             status_code=500,
             detail="Unable to generate summary at the moment. Please try again."

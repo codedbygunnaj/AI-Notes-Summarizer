@@ -31,6 +31,9 @@ class User(Base):
         DateTime, default= lambda: datetime.now(UTC)
     )
 
+    last_usage = Column(
+        DateTime, default=lambda: datetime.now(UTC)
+    )
     # ======================================================
     # Email Verification
     # ======================================================

@@ -177,7 +177,7 @@ def verify_email(token: str):
         if (
             user.verification_expires
             and
-            datetime.now(UTC) > user.verification_expires
+            datetime.now(UTC).replace(tzinfo=None) > user.verification_expires
         ):
             raise HTTPException(
                 status_code=410,
